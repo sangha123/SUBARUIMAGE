@@ -1,0 +1,106 @@
+#!/usr/bin/env python
+
+import pyfits
+
+import os 
+import sys
+
+#The configuration file has the following format
+#1) path to data directory
+#2) file names for softlinks : example: SUP*.fits
+#Values on line 3 & 4 are for making flatfields.
+#3) minimum value to accept (0.5 recommended)
+#4) maximum value to accept (1.3 recommended)
+#Values on line 5-9 are for step 6:measuring the PSF size
+#5) the number of statrs to use to measure the PSF in each image
+#6) minimum peak flux of stars to use (=2000 for a2219)
+#7) maximum peak flux of stars to use (=30000 for a2219)
+#8) minimum FWHM of stars (=2 for a2219)
+#9) maximum FWHM of stars (=7 for a2219)
+#Line 10 is for step 7: equalizing the PSF. Images with PSF's smaller than 
+#10)FWHM to smooth all data
+#Line 11 is for step 8
+#11)size of mesh for determining sky values
+#Line 12-17 is for step 11: 
+#12)starsel nskysigma=Signal-to-noise level for of objects to use for alignment
+#13)starsel npix= number of continous pixels with (starsel nskysigma) to identify object 
+#14)starsel peakmin = min value of peak pixel of alignment of stars 
+#15)starsel peakmax = max value of peak pixel of alignment of stars 
+#16)radius to use for aperture photometry 
+#17)output mos file name.
+
+configfile=sys.argv[1]
+linestring=open(configfile,mode='r').read()
+l=linestring.split()
+
+min_mask_val=float(l[2])
+max_mask_val=float(l[3])
+
+n_star=int(l[4])
+min_peak_flux=float(l[5])
+max_peak_flux=float(l[6])
+min_fwhm_stars=float(l[7])
+max_fwhm_stars=float(l[8])
+
+fwhm_smooth=float(l[9])
+
+mesh_size=float(l[10])
+
+starsel_nskysigma=float(l[11])
+starsel_npix=float(l[12])
+starsel_peak_min=float(l[13])
+starsel_peak_max=float(l[14])
+aperture_phot_radius=float(l[15])
+outfile=l[16]
+fitsfile=l[17]
+
+#os.system('ln -s %s%s .'%(l[0],l[1]))
+'''
+print "Step 1: Namechange"
+os.system('ls -1 %s%s>namechange.lis'%(l[0],l[1]))
+os.system('namechange.csh namechange.lis')
+
+print "Step 2: Overscan subtraction and bias subtractions"
+os.system('ls -1 H*.fits>overscansub.lis')
+os.system('overscansub.csh overscansub.lis')
+
+print "Step 3: Make flat Field frames"
+os.system('ls -1 To_RH*.fits>mkflat.lis')
+os.system('mask_mkflat_HA.csh mkflat.lis obj %s %s '%(min_mask_val,max_mask_val))
+
+
+print "Step 4: Flat Fielding "
+os.system('ls -1 obj_mflat*.fits>ffield_mf.lis')
+os.system('ls -1 To*.fits>ffield_im.lis')
+os.system('ffield.csh ffield_mf.lis ffield_im.lis')
+
+print "Step 6: Measurement of PSF size"
+os.system('ls -1 fTo_RH0*.fits>fwhmpsf_batch.lis')
+os.system('fwhmpsf_batch.csh fwhmpsf_batch.lis %s %s %s %s %s> fwhmpsf_batch.log'%(n_star,min_peak_flux,max_peak_flux,min_fwhm_stars,max_fwhm_stars))
+
+print "Step 7: Equalize PSF size"
+os.system('ls -1 fTo_RH0*.fits > psfmatch_batch.lis')
+os.system('psfmatch_batch.csh psfmatch_batch.lis %s %s %s %s %s %s  >psfmatch_batch.log '%(n_star,min_peak_flux,max_peak_flux,min_fwhm_stars,max_fwhm_stars,fwhm_smooth))
+'''
+print "Step 8: Subtracting the Sky"
+os.system('ls -1 pfTo_RH0*.fits > skysb.lis')
+os.system('skysb.csh skysb.lis %s > skysb.log'%(mesh_size))
+
+
+print "Step 9: Masking AG probe"
+os.system('ls -1 spfTo_RH0*.fits > mask_AGX.lis')
+os.system('mask_AGX.csh mask_AGX.lis')
+
+
+
+print "Step 10: Masking bad pixels has to be done manually"
+
+print "Step 11:Alignment and Scaling"
+#print 'makemos.csh makemos.lis %s %s %s %s %s %s > makemos.log'%(starsel_nskysigma,starsel_npix,starsel_peak_min,starsel_peak_max,aperture_phot_radius,l[16])
+os.system('ls -1 AspfTo_RH0*.fits > makemos.lis')
+os.system('makemos.csh makemos.lis %s %s %s %s %s %s > makemos.log'%(starsel_nskysigma,starsel_npix,starsel_peak_min,starsel_peak_max,aperture_phot_radius,l[16]))
+'''
+print "Step 12: Combining"
+os.system('imcio2a -dist_clip -nline=20 -dtype=FITSFLOAT -pixignr=-32768 %s %s'%(outfile,fitsfile))
+'''
+

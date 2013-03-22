@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+
+#This code reads the header andsplits the images in bands in different directories
+#you can add more functions 
+
+#You have to input filename of the form abell1758, this is the name of the directory in which you have the files.
+
+import pyfits
+
+import os 
+import sys
+import pylab
+import numpy
+
+dir_head='/media/SMC-SUBARU1/'
+cluster=sys.argv[1]
+dir_cluster=dir_head+str(cluster)+str('/')
+present_dir=dir_head+str(cluster)+str('/raw_data')
+list=os.listdir(present_dir)
+clust_id=cluster[7:9]
+print clust_id
+
+outdir1=dir_cluster+str('R_band')
+outdir2=dir_cluster+ str('V_band')
+outdir3=dir_cluster+str('I_band')
+outdir4=dir_cluster+str('G_band')
+outdir5=dir_cluster+str('Z_band')
+outdir6=str('Flats_G')
+outdir7=str('Flats_R')
+
+try:
+    os.mkdir(outdir1)
+    os.mkdir(outdir2)
+    os.mkdir(outdir3)
+    os.mkdir(outdir4)
+    os.mkdir(outdir5)
+    os.mkdir(outdir6)
+    os.mkdir(outdir7)
+except:
+    pass
+
+
+
+for l in list:
+    
+    sub=pyfits.getheader("%s/%s"%(present_dir,l))
+    data=pyfits.getdata("%s/%s"%(present_dir,l))
+
+    filter=sub.get("FILTER01")
+    
+    exptime=sub.get("EXP1TIME")
+    detector=sub.get("DETECTOR")
+    object=sub.get("OBJECT")
+    #If "w4c5" in detector:
+    print exptime,l,filter,detector,object
+
+    
+    if("RC" in filter):
+        os.system("cp %s/%s %s/%s"%(present_dir,l,outdir1,l))
+
+    if("V" in filter):
+        os.system("cp %s/%s %s/%s"%(present_dir,l,outdir2,l))
+
+    if("I" in filter):
+        os.system("cp %s/%s %s/%s"%(present_dir,l,outdir3,l))
+
+    if("G" in filter):
+        os.system("cp %s/%s %s/%s"%(present_dir,l,outdir4,l))
+
+    if("Z" in filter):
+        os.system("cp %s/%s %s/%s"%(present_dir,l,outdir5,l))
+    
+    '''if ("RC" in filter and clust_id in object):
+        os.system("cp %s/%s %s/%s"%(present_dir,l,outdir1,l))
+    if ("V" in filter and clust_id in object):
+        os.system("cp %s/%s %s/%s"%(present_dir,l,outdir2,l))    
+    if ("I" in filter and clust_id in object):
+        os.system("cp %s/%s %s/%s"%(present_dir,l,outdir3,l))
+    if ("G" in filter and clust_id in object):
+        os.system("cp %s/%s %s/%s"%(present_dir,l,outdir4,l))
+    if ("Z" in filter and clust_id in object):
+        os.system("cp %s/%s %s/%s"%(present_dir,l,outdir5,l))
+    if ("FLAT" in object and "G" in filter):
+        os.system("cp %s/%s %s/%s"%(present_dir,l,outdir6,l))
+    if ("FLAT" in object and "RC" in filter):
+        os.system("cp %s/%s %s/%s"%(present_dir,l,outdir7,l))
+    '''

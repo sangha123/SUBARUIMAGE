@@ -1,0 +1,104 @@
+#!/usr/bin/env python 
+
+import pyfits
+import os
+import sys,numpy,scipy
+
+imgname=sys.argv[1]
+os.system('ls -1 ApfTo_*.fits>img.lis')
+g=open('img.lis')
+lines=g.readlines()
+
+filename=imgname+'_exp.dat'
+param='/home/sdeb/Scampfiles/glfit.param'
+image=numpy.array([])
+exp_id=numpy.array([],dtype='double')
+frame_id=numpy.array([],dtype='double')
+config='/home/sdeb/Sextractorfiles/subaru.config'
+conv='/home/sdeb/Sextractorfiles/gauss_1.5_3x3.conv'
+i=0
+
+for line in lines:
+    sub=pyfits.getheader(line.strip())
+    exp_id=numpy.append(exp_id,(sub.get("EXP-ID")[5:12]))
+    print i,sub.get("FRAMEID"),sub.get("EXP-ID")[10:12],line.strip() 
+    id=eval(sub.get("EXP-ID")[10:12])
+    if (id!=30):
+        frame_id=numpy.append(frame_id,(sub.get("FRAMEID")[4:11]))
+        image=numpy.append(image,line.strip())
+    i=i+1
+
+idx=scipy.argsort(frame_id)
+frame_id=frame_id[idx]
+files_new=image[idx]
+print frame_id,idx
+
+n=frame_id.shape[0]
+n_exp=n/10
+print "Total=", n ,"Exposures =", n_exp
+
+file_name=numpy.array([])
+weight_file=numpy.array([])
+bg=10.0
+gain=2.6
+
+for i in xrange(n_exp):
+    for j in xrange(10):
+        print i*10+j
+        file_name=numpy.append(file_name,imgname+'_'+str(frame_id[i*10+j] )+'_'+str(j)+'.fits')
+        os.system('cp %s %s'%(image[i*10+j],file_name[i*10+j]))
+        weight_file=numpy.append(weight_file,imgname+'_'+str(frame_id[i*10+j])+'_weight'+'_'+str(j)+'.fits')
+        os.system('make_mask_weight %s %s'%(file_name[i*10+j],weight_file[i*10+j]))
+
+for i in xrange(n_exp):
+    print weight_file[i*10][0:24],file_name[i*10][0:17]
+    os.system('missfits %s -c /home/sdeb/Misfitfiles/MEF.missfits -OUTFILE_TYPE MULTI -SPLIT_START 0 -SAVE_TYPE BACKUP'%(file_name[i*10][0:17]))
+    print 'missfits %s -c /home/sdeb/Misfitfiles/MEF.missfits -OUTFILE_TYPE MULTI -SPLIT_START 0 -SAVE_TYPE BACKUP'%(weight_file[i*10][0:24])
+    os.system('missfits %s -c /home/sdeb/Misfitfiles/MEF.missfits -OUTFILE_TYPE MULTI -SPLIT_START 0 -SAVE_TYPE BACKUP'%(weight_file[i*10][0:24]))
+    os.system('sex %s -c %s -PARAMETERS_NAME %s -FILTER_NAME %s -WEIGHT_IMAGE %s -CATALOG_TYPE FITS_LDAC'%(file_name[i*10][0:17]+'.fits',config,param,conv,weight_file[i*10][0:24]+'.fits'))
+    os.system('mv subaru.cat %s'%file_name[i*10][0:17]+'.cat')
+
+
+scampconfig='/home/sdeb/Scampfiles/config_v2.scamp'
+outscamp=imgname+"_scamp.dat"
+os.system('ls -1 a*.cat>sexout.lis')
+os.system('scamp @sexout.lis -c %s -ASTREF_CATALOG SDSS-R7 -CHECKPLOT_NAME astr_referror2d,astr_interror2D,astr_referror1d,astr_interror1D -CHECKPLOT_DEV PSC -CHECKPLOT_TYPE ASTR_REFERROR2D,ASTR_INTERROR2D,ASTR_REFERROR1D,ASTR_INTERROR1D >%s'%(scampconfig,outscamp))
+
+'''
+#headfile=open(file_name[i*10][0:17]+'.head')
+
+headfile=open('swarpcoaddfiles/abell1914_0039427.head')
+head=headfile.readlines()
+
+count=0
+endlist=[]
+for line in head:
+    if 'END' in line:
+        endlist+=[count]
+    count+=1
+
+headers=[]
+c=0
+for i in xrange(len(endlist)):
+    extract=head[c:endlist[i]]
+    #if i==0: print extract
+    c=endlist[i]+1
+    g=open('tmp%d.txt'%i,mode='w')
+    g.writelines(extract)
+    g.close()
+n_exp=1
+for i in xrange(n_exp):
+    #file=pyfits.open(file_name[i*10][0:17]+'.fits')
+    file=pyfits.open('swarpcoaddfiles/abell1914_0039427.fits')
+    for i in xrange(len(endlist)):
+        card=file[i+1].header.ascardlist()
+        keys=card[0:6].keys()
+        print keys
+        file[i+1].header.fromTxtFile('tmp%d.txt'%i,replace=False)
+        new_card=file[i+1].header.ascardlist()
+        new_card.append(card[0:6])
+        
+        print file[i+1].header.ascardlist()
+        raw_input()
+    file.writeto('new.fits')
+'''
